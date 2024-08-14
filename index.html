@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech to Text</title>
+</head>
+<body>
+    <h1>Speech to Text</h1>
+    <button id="record">Record</button>
+    <p id="text"></p>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const recordButton = document.getElementById('record');
+        const textDisplay = document.getElementById('text');
+
+        recordButton.addEventListener('click', () => {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    const mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.start();
+
+                    const audioChunks = [];
+
+                    mediaRecorder.addEventListener('dataavailable', event => {
+                        audioChunks.push(event.data);
+                    });
+
+                    mediaRecorder.addEventListener('stop', () => {
+                        const audioBlob = new Blob(audioChunks);
+                        const reader = new FileReader();
+                        reader.readAsArrayBuffer(audioBlob);
+
+                        reader.onloadend = () => {
+                            const audioArrayBuffer = reader.result;
+                            socket.emit('voice', audioArrayBuffer);
+                        };
+                    });
+
+                    setTimeout(() => {
+                        mediaRecorder.stop();
+                    }, 5000); // Record for 5 seconds
+                });
+        });
+
+        socket.on('text', text => {
+            textDisplay.textContent = text;
+        });
+    </script>
+</body>
+</html>
